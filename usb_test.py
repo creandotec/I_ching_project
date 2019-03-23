@@ -3,7 +3,7 @@ import usb.util
 import usb.backend.libusb1
 
 class BeeModules():
-    idVendor = "0x04d8"
+    idVendor = "0x4d8"
     modules_available = list()
 
 
@@ -22,7 +22,22 @@ for dev in device:
         #print(hex(dev.idVendor)+"\n")
         if hex(dev.idVendor) == BeeModules.idVendor:
             print("Board found")
+            try:
+                dev.detach_kernel_driver(0)
+            except:
+                pass
+            dev.set_configuration()
             BeeModules.modules_available.append(dev)
     except NotImplementedError:
         print("There is an error")
 print(len(BeeModules.modules_available))
+
+while True:
+    if len(BeeModules.modules_available) > 0:
+        value1 = input("Type the value for the first byte")
+        value2 = input("Type the value for the second byte")
+
+        for dev in BeeModules.modules_available:
+            send_data_to_relay_bee(dev, int(value1), int(value2))
+    else:
+        pass
