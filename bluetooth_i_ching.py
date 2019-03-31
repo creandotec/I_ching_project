@@ -1,12 +1,12 @@
-#!/usr/bin/python3.5
+#!/usr/bin/python3.5-32
 import bluetooth
 import time
 import tkinter as tk
 import os
-#from tkinter import ttk
 import random
 import glob
-import usb.core
+import ctypes
+
 
 #    lower and upper trigrams, ready to call the software which drives the relays (switches) and
 #    the motors.  Hopefully the relay will come with the appropriate instructions as to how to call
@@ -29,6 +29,69 @@ time_to_keep_alive_slide = 5000
 
 #near_devices = list()
 #device_name = "TRY ME, OPEN YOUR BLUETOOTH"
+
+
+#Create the wrapers for the dll of the boards
+boardDll = ctypes.cdll.LoadLibrary("./dll/bee.dll")
+
+InitBee_prototype = ctypes.WINFUNCTYPE(ctypes.c_int)
+Bee_Outputs_prototype = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_int)
+
+InitBee  = InitBee_prototype(("InitBee", boardDll))
+Bee_Set_Outputs = Bee_Outputs_prototype(("MB_SetOutputs", boardDll))
+
+class BeeModules():
+    def __init__(self):
+        self.status = InitBee()
+
+        if self.status == 0:
+            print(self.status)
+            print("No board was found")
+
+        elif self.status == 1:
+            print("Just one board found")
+            Bee_Set_Outputs(1, 0)
+            #print(status)
+            #Bee_Set_Outputs = boardDll.MB_SetOutputs(1, 170)
+            #print("boards were found")
+
+        elif self.status == 2:
+            print("Two boards found")
+            Bee_Set_Outputs(1, 0)
+            Bee_Set_Outputs(2, 0)
+
+    def play_trigram(self, lower_trigram, upper_trigram):
+        if self.status > 0:
+            try:
+                self.l_trigram_file = open("./Text Files/"+lower_trigram+".txt", "r")
+                self.l_trigram_lines = l_trigram_file.readlines()
+                self.l_trigram_file.close()
+            except IOError:
+                print("Can't found the file for {0}".format(lower_trigram))
+            try:
+                self.u_trigram_file = open("./Text Files/"+upper_trigram+".txt", "r")
+                self.u_trigram_lines = u_trigram_file.readlines()
+                u_trigram_file.close()
+            except IOError:
+                print("Can't found the file for {0}".format(upper_trigram))
+
+            self.number_of_u_lines = len(self.u_trigram_lines)
+            self.number_of_l_lines = len(self.l_trigram_lines)
+
+            if self.number_of_l_lines > 0 or self.number_of_u_lines > 0:
+                for i in range(number_of_lines):
+                    self.u_trigram_code = int(self.u_trigram_lines[i])
+                    self.l_trigram_code = int(self.l_trigram_lines[i])
+
+                    Bee_Set_Outputs(1, self.l_trigram_code);
+                    if self.status == 2:
+                        Bee_Set_Outputs(2, self.u_trigram_code);
+
+                    time.sleep(0.1)
+        else:
+            print("There are no Bee boards")
+
+bee_modules = BeeModules()
 
 def search_for_devices():
     global device_name
@@ -309,10 +372,12 @@ def throw_i_ching():
     Trigrams.lower_trigram = LowerTrigram
     Trigrams.upper_trigram = UpperTrigram
 
+    bee_modules.play_trigram(LowerTrigram, UpperTrigram)
     Trigrams.prepare_hexagram_picture(LowerTrigram, UpperTrigram)
 
     print("Upper Trigram is ", UpperTrigram)
     print("Lower Trigram is ", LowerTrigram)
 
 if __name__ == "__main__":
+
     GUI_interface.root.mainloop()
